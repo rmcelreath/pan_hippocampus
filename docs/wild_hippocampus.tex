@@ -166,7 +166,12 @@ If hippocampus volume scales directly with total brain volume, then $\beta$ shou
 \sigma &\sim \text{Exponential}(1)
 \end{align*}
 
-The prior predictive distribution for these priors is surely too wide---it includes many very large hippocampus volumes. However it contains no bias for a difference between wild and captive, and the wide priors help us to notice model misspecification when it is present. The code base contains a module for producing and plotting the prior predictive distribution.
+And we can simulate from these priors to visualize the prior predictive distribution of implied hippocampus volumes. Showing captive in black and wild in red:
+\begin{center}
+	\includegraphics[scale=0.7]{fig_prior_pred_m1.pdf}
+\end{center}
+
+The prior predictive distribution for these priors is surely too wide---it includes many very large hippocampus volumes. However it contains no bias for a difference between wild and captive, and the wide priors help us to notice model misspecification when it is present. The code base contains a module for reproducing and plotting this prior predictive distribution.
 
 
 \subsection{Growth model}
