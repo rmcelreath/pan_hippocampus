@@ -190,13 +190,42 @@ The proportion $p_A$ could increase or decrease with age, because while the volu
 
 \subsection{Dimensionless analysis}
 
-Often it is revealing to divide out all measurement scales and express the relations among measurements as dimensionless ratios.
+Often it is revealing to divide out all measurement scales and express the relations among measurements as dimensionless ratios. 
 
 
 \section{Implementation}
 
-x
+We implement the models above in the probabilistic programming language Stan, through the \texttt{cmdstanr} interface in R \citep{cmdstanr2025} and the \texttt{rethinking} package \citep{rethinking2024}. The \texttt{ulam} model specification for the base covariance measurement model is:
+\begin{verbatim}
+        c(logHL,logHR) ~ multi_normal(c(muL,muR),Rho,Sigma),
+        muR <- muL + delta,
+        muL <- a[R] + bB*logB + g*A,
+        a[R] ~ normal(-5.7,2),
+        delta ~ normal(0,0.5),
+        bB ~ normal(1,0.5),
+        g ~ normal(0,0.5),
+        Rho ~ lkj_corr(4),
+        vector[2]:Sigma <<- rep_vector(sigma,2),
+        sigma ~ exponential(1)
+\end{verbatim}
+We drew 4000 total samples from 8 chains with 500 warmup steps for each chain. There were no problems in exploring the posterior distribution, as indicated by the R-hat convergence diagnostic, trace rank plots, and bulk effective sample size estimates. See \cite{Vehtari_2021} for definition and discussion of convergence diagnostics. The marginal posterior summaries and diagnostics for each parameter are given below.
+\begin{verbatim}
+          mean   sd  5.5% 94.5% rhat ess_bulk
+a[1]     -4.86 1.33 -6.98 -2.75    1  1206.96
+a[2]     -4.67 1.32 -6.76 -2.57    1  1205.32
+delta     0.02 0.03 -0.02  0.07    1  2022.12
+bB        0.94 0.11  0.77  1.11    1  1206.12
+g         0.00 0.00 -0.01  0.00    1  3902.55
+Rho[2,1]  0.57 0.16  0.30  0.78    1  1992.20
+Rho[1,2]  0.57 0.16  0.30  0.78    1  1992.20
+sigma     0.13 0.02  0.10  0.16    1  1828.53
+\end{verbatim}
 
+The first two parameters are the log-intercepts for captive, \texttt{a[1]}, and wild, \texttt{a[2]}, individuals. We require the contrast between these two distributions, which is given below.
+\begin{center}
+	\includegraphics[scale=0.7]{fig_post_contrast_m1.pdf}
+\end{center}
+Approximately 99.6\% of the posterior mass is above zero, indicating strong evidence for larger average proportional hippocampi in wild-resident individuals.
 
 %%%%%%%%%%%%%%%%%%%%%%%
 \clearpage
