@@ -104,7 +104,7 @@ m1 <- ulam(
     alist(
         c(logHL,logHR) ~ multi_normal(c(muL,muR),Rho,Sigma),
         muR <- muL + delta,
-        muL <- a[R] + (bB + g*A)*logB,
+        muL <- a[R] + bB*logB + g*A,
         a[R] ~ normal(-5.7,2),
         delta ~ normal(0,0.5),
         bB ~ normal(1,0.5),
@@ -164,11 +164,11 @@ m2 <- ulam(
         muAL <- aA[R] + bB*logB,
         muPR <- muPL + delta,
         muPL <- aP[R] + bB*logB,
-        a[R] ~ normal(-5.7,2),
-        aA[R] ~ normal(-6,2),
-        aP[R] ~ normal(-6,2),
+        a[R] ~ normal(-5.7,1),
+        aA[R] ~ normal(-6,1),
+        aP[R] ~ normal(-6,1),
         delta ~ normal(0,0.5),
-        bB ~ normal(1,0.1),
+        bB ~ normal(1,0.5),
         Rho ~ lkj_corr(4),
         Sigma ~ exponential(1)
     ), data=dat , chains=8 , cores=8 , refresh=1000 )
@@ -181,7 +181,7 @@ precis(m2,3)
 # so like log-normal with age-residence-specific intercepts, but constant exposure with log(B)
 
 # covariance version
-m2 <- ulam(
+m3 <- ulam(
     alist(
         # hippocampus model
         c(logHL,logHR) ~ multi_normal(c(muL,muR),Rho,Sigma),
@@ -202,7 +202,7 @@ m2 <- ulam(
         tau ~ exponential(1)
     ), data=dat , chains=8 , cores=8 , sample=TRUE )
 
-precis(m2,3)
+precis(m3,3)
 
 # plot brain growth against age
 rep_vector <- function(x,n) rep(x,times=n)
