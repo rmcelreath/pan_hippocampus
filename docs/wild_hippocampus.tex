@@ -114,9 +114,9 @@ Before developing the statistical models, it is necessary to make clear what we 
 \begin{tikzpicture}
   % nodes %
   \node[text centered] (h) {$H$};
-  \node[right=1 of h, text centered] (b) {$B$};
-  \node[below=1 of b, text centered] (a) {$A$};
-  \node[below=1 of h, text centered] (r) {$R$};
+  \node[right=1.6 of h, text centered] (b) {$B$};
+  \node[below=1.6 of b, text centered] (a) {$A$};
+  \node[below=1.6 of h, text centered] (r) {$R$};
   % edges %
   \draw[-Latex, line width= 1] (b) -- (h);
   \draw[-Latex, line width= 1] (a) -- (b);
@@ -127,16 +127,17 @@ Before developing the statistical models, it is necessary to make clear what we 
   
   \draw[-Latex, line width= 3,white] (a) -- (h);
   \draw[-Latex, line width= 1] (a) -- (h);
-  \path[Latex-Latex,dashed] (h) edge[bend left=50] (b);
+  \path[Latex-Latex,dashed] (h) edge[bend left=50,line width= 1] (b);
 \end{tikzpicture}
 \end{center}
 The treatment of interest $R$ potentially influences age at death $A$, total brain size $B$, and the outcome of interest $H$. Total brain size $B$ is a strong causal influence on $H$. Age $A$ certainly influences $B$ and may directly influence $H$ as well. Finally, there may be unmeasured common influences on $H$ and $B$ as well, represented by the dashed double-headed arrow between them.
 
-For the estimand of the direct effect of $R$ on $H$, by the back-door criterion \citep{Pearl1993} the minimum adjustment set is $\{A,B\}$ and the unmeasured confounds between $H$ and $B$. We must stratify by $B$ to close a biasing path $R \rightarrow B \rightarrow H$. And we must stratify by $A$ to close a possible biasing path $R \rightarrow A \rightarrow H$.
+For the estimand of the direct effect of $R$ on $H$, by the back-door criterion \citep{Pearl1993}, there are no back-door paths into $R$. However since we want the direct effect only, the minimum adjustment set is $\{A,B\}$ and the unmeasured confounds between $H$ and $B$. We must stratify by $B$ to close the indirect causal path $R \rightarrow B \rightarrow H$. And we must stratify by $A$ to close a possible indirect path $R \rightarrow A \rightarrow H$.
 
 When we stratify by $B$, this opens a biasing path through the unmeasured confounds of $H$ and $B$ (the dashed curve at top). Unfortunately we know of no strategy for eliminating these confounds, so any estimates must be interpreted as potentially biased. This bias is common to nearly all studies of this kind, since individual genetic and environmental common causes of brain anatomy are rarely measured.
 
-Note that the total causal effect of $R$ on $H$ is not biased and requires no stratification, despite the unmeasured confounds. There are no biasing paths. But the total effect is not of direct interest.
+Note that the total causal effect of $R$ on $H$ is not biased and requires no stratification, despite the unmeasured confounds. There are no biasing paths. But the total effect is not of direct interest, since it would include the influence of overall larger brains.
+
 
 \subsection{Measurement model}
 
@@ -155,6 +156,18 @@ Each individual contributes multiple hippocampus measurements across two hemisph
 \mu_{Ri} &= \mu_{Li} + \delta
 \end{align*}
 
+If hippocampus volume scales directly with total brain volume, then $\beta$ should be 1. Then the meaning of the parameter $\alpha$ is the logarithm of the hippocampus' proportion of total brain volume. We don't want to set this prior based upon our sample of chimpanzees. But using humans as a reference, a typical adult hippocampus is about 3500 mL (Woolard \& Heckars 2012). If we use 1100 cm$^3$ as a reference adult human brain volume, then the hippocampus proportion is about $0.0032$, so $\alpha$ should be approximately $\log 0.0032 = -5.74$. Using these guidelines, we assign a set a weakly-informative priors for the data model above.
+\begin{align*}
+\alpha_{R} &\sim \text{Normal}(-5.7,2) \\
+\delta &\sim \text{Normal}(0,0.5) \\
+\beta &\sim \text{Normal}(1,0.5) \\
+\gamma &\sim \text{Normal}(0,0.5) \\
+\rho &\sim \text{LKJCorr(4)} \\
+\sigma &\sim \text{Exponential}(1)
+\end{align*}
+
+The prior predictive distribution for these priors is surely too wide---it includes many very large hippocampus volumes. However it contains no bias for a difference between wild and captive, and the wide priors help us to notice model misspecification when it is present. The code base contains a module for producing and plotting the prior predictive distribution.
+
 
 \subsection{Growth model}
 x
@@ -167,7 +180,7 @@ On the log scale, which we'll use for modeling, this is:
 \begin{align*}
 \log H = \log p_A + \log B
 \end{align*}
-The proportion $p_A$ could increase or decrease with age, because while the volume of the hippocampus increases with age, and the volume of the brain increases with age, the relative volume could increase or decrease. 
+The proportion $p_A$ could increase or decrease with age, because while the volume of the hippocampus increases with age, and the volume of the brain increases with age, the relative volume could increase or decrease.
 
 
 \subsection{Dimensionless analysis}
