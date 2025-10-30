@@ -66,7 +66,7 @@ plot( d2$A , d2$HRL/d2$B , col=d2$R , cex=2 , xlab="Age" , ylab="Hippocampus/Bra
 m0 <- ulam(
     alist(
         logY ~ normal(mu,sigma),
-        mu <- a[R] + bB*logB + bA*A,
+        mu <- a[R] + bB*logB + bA*A/60,
         a[R] ~ normal(0,10),
         bB ~ normal(1,1),
         bA ~ normal(1,1),
@@ -91,7 +91,7 @@ m1_dev <- ulam(
     alist(
         logHL ~ normal(mu,sigma),
         logHR ~ normal(mu,sigma),
-        mu <- a[R] + bB*logB + bA*A,
+        mu <- a[R] + bB*logB + bA*A/60,
         a[R] ~ normal(-5,2),
         bB ~ normal(1,1),
         bA ~ normal(1,1),
@@ -103,10 +103,10 @@ m1_dev <- ulam(
 m1 <- ulam(
     alist(
         c(logHL,logHR) ~ multi_normal(c(muL,muR),Rho,Sigma),
-        muR <- muL + delta,
-        muL <- a[R] + bB*logB + g*A,
+        muR <- muL + delta[R],
+        muL <- a[R] + bB*logB + g*(A/60),
         a[R] ~ normal(-5.7,2),
-        delta ~ normal(0,0.5),
+        delta[R] ~ normal(0,0.5),
         bB ~ normal(1,0.5),
         g ~ normal(0,0.5),
         Rho ~ lkj_corr(4),
@@ -116,15 +116,22 @@ m1 <- ulam(
 
 precis(m1,3)
 
-post <- extract.samples(m1)
-diff <- post$a[,2]-post$a[,1]
-quantile(diff)
 blank2()
-dens(post$a[,2]-post$a[,1],show.zero=TRUE,xlab="contrast [wild-captive]")
+
+post <- extract.samples(m1)
+diffL <- post$a[,2]-post$a[,1]
+diffR <- diffL + post$delta[,2] - post$delta[,1]
+dens(diffL,show.zero=TRUE,xlab="contrast [wild-captive]")
+dens(diffR,add=TRUE,col=2)
 
 # mass below zero
 mbz <- sum(diff<0)/length(diff)
 text(0.15,2,round(1-mbz,3))
+
+# bivariate posterior for the intercepts
+#blank2()
+plot( post$a[,1] , post$a[,2] , xlab="captive log-intercept" , ylab="wild log-intercept" , xlim=c(-10,1) , ylim=c(-10,1) , col=grau(0.5) )
+abline( a=0 , b=1 )
 
 # prior predictive for covariance model
 
@@ -154,26 +161,61 @@ points( (logB) , (Hwild[,1]) , col=2 )
 
 ######################################################
 # add anterior/posterior volumes
+# allow lateralization (delta) to differ for each region
+# tricky issue: total volume on each side is sum of anterior and posterior --- this constrains the parameters --- just no need to model total volume here? but measurements don't exactly add up to total...
+
+# total is *almost* sum of anterior + posterior
+# but row 4 right sum off by 8 - why?
+# differences here would be zero if total is just sum of anterior+posterior
+exp(dat$logHL) - ( exp(dat$logAHL) + exp(dat$logPHL) ) # left
+exp(dat$logHR) - ( exp(dat$logAHR) + exp(dat$logPHR) ) # right
 
 m2 <- ulam(
     alist(
-        c(logHL,logHR,logAHL,logAHR,logPHL,logPHR) ~ multi_normal(c(muL,muR,muAL,muAR,muPL,muPR),Rho,Sigma),
-        muR <- muL + delta,
-        muL <- a[R] + bB*logB,
-        muAR <- muAL + delta,
-        muAL <- aA[R] + bB*logB,
-        muPR <- muPL + delta,
-        muPL <- aP[R] + bB*logB,
+        #c(logHL,logHR,logAHL,logAHR,logPHL,logPHR) ~ multi_normal(c(muL,muR,muAL,muAR,muPL,muPR),Rho,Sigma),
+        c(logAHL,logAHR,logPHL,logPHR) ~ multi_normal(c(muAL,muAR,muPL,muPR),Rho,Sigma),
+        #muR <- muL + delta[R,1],
+        #muL <- a[R] + logB,
+        #muR <- muAR + muPR,
+        #muL <- muAL + muPL,
+        muAR <- muAL + delta[R,1],
+        muAL <- aA[R] + logB,
+        muPR <- muPL + delta[R,2],
+        muPL <- aP[R] + logB,
         a[R] ~ normal(-5.7,1),
         aA[R] ~ normal(-6,1),
         aP[R] ~ normal(-6,1),
-        delta ~ normal(0,0.5),
+        matrix[R,2]:delta ~ normal(0,0.5),
         bB ~ normal(1,0.5),
         Rho ~ lkj_corr(4),
-        Sigma ~ exponential(1)
+        vector[4]:Sigma <<- rep_vector(sigma,4),
+        sigma ~ exponential(1)
     ), data=dat , chains=8 , cores=8 , refresh=1000 )
 
 precis(m2,3)
+post <- extract.samples(m2)
+
+# contrast wild-captive
+blank2(w=2)
+
+par(mfrow=c(1,2))
+# anterior
+diffLA <- post$aA[,2]-post$aA[,1]
+diffRA <- diffLA + post$delta[,2,1] - post$delta[,1,1]
+dens(diffLA,show.zero=TRUE,xlab="contrast [wild-captive]",lwd=2)
+dens(diffRA,add=TRUE,col=2,lwd=2)
+mtext("anterior (red=right)")
+# posterior
+diffLP <- post$aP[,2]-post$aP[,1]
+diffRP <- diffLP + post$delta[,2,2] - post$delta[,1,2]
+dens(diffLP,show.zero=TRUE,xlab="contrast [wild-captive]",lwd=2)
+dens(diffRP,add=TRUE,col=2,lwd=2)
+mtext("posterior (red=right)")
+
+# correlation matrix mean
+post_mean_corr <- apply(post$Rho,2:3,mean)
+image(post_mean_corr)
+round(post_mean_corr,2)
 
 ######################################################
 # model hippocampus as age-residence-specific proportion of brain B
@@ -186,7 +228,7 @@ m3 <- ulam(
         # hippocampus model
         c(logHL,logHR) ~ multi_normal(c(muL,muR),Rho,Sigma),
         muR <- muL + delta,
-        muL <- a[R] + p*A + logB,
+        muL <- a[R] + p*log(A/60) + logB,
         p ~ normal(0,0.5),
         delta ~ normal(0,0.5),
         # brain size model
@@ -207,7 +249,7 @@ precis(m3,3)
 # plot brain growth against age
 rep_vector <- function(x,n) rep(x,times=n)
 pred_dat <- data.frame(A=1:50,R=1,logB=10)
-nu_pred <- link(m2,data=pred_dat)$nu
+nu_pred <- link(m3,data=pred_dat)$nu
 plot( dat$A , dat$B , xlab="age" , ylab="brain volume" , col=dat$R )
 lines( apply(exp(nu_pred),2,mean) , lwd=2 )
 ci <- apply(exp(nu_pred),2,PI)
